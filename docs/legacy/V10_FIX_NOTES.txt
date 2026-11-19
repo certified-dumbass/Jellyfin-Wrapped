@@ -1,0 +1,5 @@
+Wrapped v10
+- Keeps the working 9-slide configuration fix unchanged.
+- Keeps the body-level preview portal, but injects dedicated global preview CSS before moving the overlay.
+- Fixes the tiny/unformatted preview caused by Jellyfin scoping plugin-page CSS to WrappedConfigPage.
+- Delete/index handling from v9 is retained unchanged.

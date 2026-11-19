@@ -1,0 +1,6 @@
+Wrapped v14
+
+- Fixed preview Previous, Next and Close buttons after the fullscreen preview is portaled to document.body.
+- Added a single delegated click handler directly on #wrappedPreviewOverlay.
+- Fixed Escape / ArrowLeft / ArrowRight keyboard controls by resolving the portaled preview globally.
+- Preserved v13 metadata, artwork, 9-slide configuration, delete and fullscreen preview behavior.

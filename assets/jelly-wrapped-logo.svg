@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">Jelly-Wrapped logo</title><desc id="desc">Neon purple and teal movie reel with a wrapped film strip and a star, on dark midnight background</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#17132e"/><stop offset=".52" stop-color="#0c1023"/><stop offset="1" stop-color="#071b24"/></linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e26bff"/><stop offset=".46" stop-color="#9553ff"/><stop offset="1" stop-color="#38ecc7"/></linearGradient>
+    <linearGradient id="tape" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#7a49fd"/><stop offset=".54" stop-color="#cc5dff"/><stop offset="1" stop-color="#5be4d0"/></linearGradient>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="26"/></filter>
+    <filter id="smallGlow"><feGaussianBlur stdDeviation="6"/></filter>
+  </defs>
+  <rect width="1024" height="1024" rx="220" fill="url(#bg)"/>
+  <circle cx="514" cy="440" r="258" stroke="#b35aff" stroke-width="62" opacity=".11" fill="none" filter="url(#glow)"/>
+  <circle cx="514" cy="440" r="219" fill="#161431" stroke="url(#accent)" stroke-width="25"/>
+  <circle cx="514" cy="440" r="155" fill="none" stroke="#a799f9" stroke-opacity=".18" stroke-width="3"/>
+  <g fill="#100f24" stroke="#ba83ff" stroke-opacity=".82" stroke-width="8">
+    <circle cx="514" cy="303" r="46"/><circle cx="647" cy="415" r="46"/><circle cx="595" cy="555" r="46"/><circle cx="433" cy="555" r="46"/><circle cx="378" cy="414" r="46"/>
+  </g>
+  <circle cx="514" cy="440" r="55" fill="url(#accent)"/><circle cx="514" cy="440" r="25" fill="#11152b"/>
+  <path d="M250 562 C387 615 474 614 555 661 C651 717 722 672 796 593" fill="none" stroke="#af64ff" stroke-width="83" stroke-linecap="round" opacity=".25" filter="url(#smallGlow)"/>
+  <path d="M250 562 C387 615 474 614 555 661 C651 717 722 672 796 593" fill="none" stroke="url(#tape)" stroke-width="58" stroke-linecap="round"/>
+  <path d="M270 569 L287 531 M343 602 L359 560 M421 630 L440 585 M505 654 L517 605 M595 683 L597 640 M683 666 L664 627 M753 621 L725 587" stroke="#15132b" stroke-width="15" stroke-linecap="round" opacity=".8"/>
+  <path d="M753 204 L773 250 L817 268 L773 288 L753 333 L734 288 L689 268 L734 250 Z" fill="#71f5dc"/>
+  <path d="M260 257 L273 286 L301 298 L273 311 L260 340 L248 311 L219 298 L248 286 Z" fill="#d886ff"/>
+  <g font-family="Arial,Helvetica,sans-serif" fill="#fff" text-anchor="middle" font-weight="800">
+    <text x="512" y="820" font-size="82" letter-spacing="-3">JELLY</text>
+    <text x="512" y="892" font-size="65" letter-spacing="10" fill="#c2b2ff">WRAPPED</text>
+  </g>
+</svg>

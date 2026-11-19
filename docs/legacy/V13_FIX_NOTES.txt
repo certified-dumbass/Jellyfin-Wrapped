@@ -1,0 +1,8 @@
+Wrapped v13 artwork fix
+- Uses Jellyfin /Items/{id}/Images/{type} endpoints directly for preview artwork.
+- Movies Watched shows up to 5 real watched-movie posters.
+- Episodes/Series Watched show up to 5 real series posters.
+- Favorite Movie and Favorite Series use direct primary-image URLs.
+- Artwork cards now use actual <img> elements with graceful error fallback.
+- Added [Wrapped] Artwork URLs console diagnostics.
+- Existing v10-v12 config, 9-slide, delete and fullscreen preview behavior preserved.

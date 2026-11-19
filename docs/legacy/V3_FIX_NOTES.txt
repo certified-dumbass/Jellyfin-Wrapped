@@ -1,0 +1,1 @@
+Wrapped v3: config.html is self-contained. CSS and JavaScript are inlined into config.html. Only config.html is embedded as a Jellyfin plugin page. The source standardcore.css/js files remain for reference but are not loaded by Jellyfin.

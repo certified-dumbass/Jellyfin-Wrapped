@@ -1,0 +1,6 @@
+Wrapped v5
+- Keeps v4 __plugin/standardcore.js controller loading.
+- Uses delegated page click handling so Jellyfin emby-button DOM upgrades cannot detach Add/Delete/Preview handlers.
+- Fixes Delete Slide and Preview controls through delegated events.
+- Adds Reset Default Slides button to restore the canonical 9-slide layout.
+- Existing saved configuration is not changed until Save Settings is clicked.

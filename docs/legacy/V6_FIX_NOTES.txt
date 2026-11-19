@@ -1,0 +1,10 @@
+Wrapped v6 fixes
+
+ROOT CAUSE OF 9 -> 18 -> 28 SLIDES:
+PluginConfiguration constructor pre-populated Slides with 9 defaults. Jellyfin XML deserialization constructs PluginConfiguration first, then appends serialized list entries into the existing list. Thus 9 defaults + 9 saved = 18; after an added/saved slide, 9 + 19 saved = 28.
+
+Fixes:
+- PluginConfiguration now initializes Slides as an empty List<WrappedSlide>.
+- Reset Default Slides remains the explicit way to create the 9 defaults and replaces the JS array rather than appending.
+- Editor and preview overlays now clear focus before aria-hidden and use inert while closed.
+- Added Loaded/Saving/Reset slide-count console diagnostics.

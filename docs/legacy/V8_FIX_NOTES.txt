@@ -1,0 +1,6 @@
+Wrapped v8
+- Based directly on the working v6 project (9-slide loading fix preserved).
+- Preview/Delete now use a document-level capture listener with composedPath, resilient to Jellyfin emby-button DOM upgrades.
+- Editor stores active slide ID on the overlay as a fallback for Delete.
+- Preview/editor explicitly remove inert on open and force display; close restores inert/display safely.
+- Added targeted console logging for Preview/Delete only.

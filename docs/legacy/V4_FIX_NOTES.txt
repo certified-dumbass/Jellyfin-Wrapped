@@ -1,0 +1,16 @@
+Wrapped v4 - Jellyfin plugin controller loading
+
+Why this version exists:
+- Jellyfin loaded Wrapped's HTML and stored configuration correctly, but the inline script was not executing.
+- The browser showed the WrappedConfigPage in the DOM and ApiClient returned 18 saved slides.
+- This version follows Jellyfin's current plugin-page controller pattern used by official plugins.
+
+Changes:
+1. config.html uses data-controller="__plugin/standardcore.js" on WrappedConfigPage.
+2. Inline JavaScript was removed from config.html.
+3. standardcore.js is registered as a PluginPageInfo embedded resource.
+4. standardcore.js is embedded by standard.csproj.
+5. CSS remains inline in config.html because it was already rendering correctly.
+
+Expected console message after opening Wrapped:
+[Wrapped] Builder initialized with 18 slides.

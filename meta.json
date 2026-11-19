@@ -1,0 +1,15 @@
+{
+  "guid": "5f84d6a7-2c91-47b3-a65e-841e9d42f731",
+  "name": "Jelly-Wrapped",
+  "description": "Jelly-Wrapped: configurable personalized slides, user exclusions and library additions.",
+  "overview": "Jelly-Wrapped editor and preview for Jellyfin 12.4",
+  "owner": "Dreamstreaming",
+  "category": "General",
+  "version": "1.16.0.0",
+  "targetAbi": "12.4.0.0",
+  "status": "Active",
+  "autoUpdate": false,
+  "assemblies": [
+    "Wrapped.Core.dll"
+  ]
+}

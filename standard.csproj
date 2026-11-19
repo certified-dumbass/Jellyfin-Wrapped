@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!-- Jellyfin 12.4 is built on .NET 10 -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <!-- Preserve assembly name and namespaces so the existing configuration and embedded-page IDs keep working. -->
+    <AssemblyName>Wrapped.Core</AssemblyName>
+    <RootNamespace>Wrapped.Core</RootNamespace>
+    <Version>1.16.0.0</Version>
+    <AssemblyVersion>1.16.0.0</AssemblyVersion>
+    <FileVersion>1.16.0.0</FileVersion>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Jellyfin.Controller" Version="12.4.0" />
+    <PackageReference Include="Jellyfin.Common" Version="12.4.0" />
+    <PackageReference Include="Jellyfin.Model" Version="12.4.0" />
+    <!-- Explicitly reference the ASP.NET Core framework for the plugin's API controller. -->
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Keep both embedded resources: the plugin dashboard page loads the JS controller via __plugin/standardcore.js. -->
+    <EmbeddedResource Include="Web/config.html" />
+    <EmbeddedResource Include="Web/standardcore.js" />
+  </ItemGroup>
+</Project>

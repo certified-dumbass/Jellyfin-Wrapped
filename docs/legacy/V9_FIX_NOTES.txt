@@ -1,0 +1,6 @@
+Wrapped v9 targeted fixes
+- Preserves v6/v8 configuration/default-slide behavior (9-slide fix untouched).
+- Removes stale document-global critical-action handler that could capture an older controller instance.
+- Delete now tracks the editor's slide index, with dataset and ID fallbacks.
+- Preview is portaled to document.body while open and forced above Jellyfin page/tab containers.
+- Preview returns to its original parent when closed.
