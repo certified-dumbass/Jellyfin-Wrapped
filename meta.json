@@ -5,7 +5,7 @@
   "overview": "Jelly-Wrapped editor and preview for Jellyfin 12.4",
   "owner": "Dreamstreaming",
   "category": "General",
-  "version": "1.16.0.0",
+  "version": "1.17.1.0",
   "targetAbi": "12.4.0.0",
   "status": "Active",
   "autoUpdate": false,

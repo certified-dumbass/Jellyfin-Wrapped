@@ -1,8 +1,8 @@
 $ErrorActionPreference = 'Stop'
 $project = Join-Path $PSScriptRoot 'standard.csproj'
 $release = Join-Path $PSScriptRoot 'release'
-$staging = Join-Path $release 'Wrapped_1.16.0.0'
-$archive = Join-Path $release 'Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip'
+$staging = Join-Path $release 'Wrapped_1.17.1.0'
+$archive = Join-Path $release 'Jelly-Wrapped-1.17.1.0-Jellyfin12.4.zip'
 
 if (-not (Get-Command dotnet -ErrorAction SilentlyContinue)) {
     throw '.NET 10 SDK niet gevonden. Installeer de .NET 10 SDK voordat je bouwt.'

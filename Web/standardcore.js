@@ -2,6 +2,9 @@
     "use strict";
 
     const pluginId = "5F84D6A7-2C91-47B3-A65E-841E9D42F731";
+    const viewerMode = /\/JellyWrapped\/viewer\.js$/i.test(
+        new URL(document.currentScript?.src || location.href).pathname
+    );
     const pageId = "WrappedConfigPage";
 
     let configuration = null;
@@ -13,7 +16,6 @@
     let previewTimer = null;
     let dirty = false;
     let livePreviewData = null;
-    let livePreviewDataPromise = null;
     let jellyfinUsers = [];
     let excludedUserIds = new Set();
 
@@ -23,6 +25,9 @@
 
     const slideNames = {
         Intro: "Intro",
+        LibraryTotal: "Total Library Media",
+        CombinedTotal: "Combined Viewing",
+        FavoriteFranchise: "Most Watched Film Collection",
         WatchTime: "Total Watch Time",
         MoviesWatched: "Movies Watched",
         EpisodesWatched: "Episodes Watched",
@@ -83,6 +88,11 @@
     initialize(page);
 }
 
+if (viewerMode) {
+    startViewer();
+    return;
+}
+
 document.addEventListener("pageshow", function (event) {
     const page = event.target;
 
@@ -122,6 +132,7 @@ async function initialize(page) {
             slides = Array.isArray(configuration.Slides)
                 ? configuration.Slides.map(normalizeSlide)
                 : [];
+            if (!slides.length) slides = defaultSlides();
 
             normalizeOrders();
             console.log("[Wrapped] Loaded slides:", slides.length);
@@ -192,7 +203,8 @@ async function initialize(page) {
 
                 case "previewWrappedButton":
                     event.preventDefault();
-                    openPreview(page);
+                    target.disabled = true;
+                    openPreview(page).finally(() => { target.disabled = false; });
                     break;
 
                 case "resetSlidesButton":
@@ -256,12 +268,12 @@ async function initialize(page) {
         page.querySelector("#SlideDurationSeconds")?.addEventListener("input", function () {
             markDirty(page);
         });
+        for (const id of ["PopupStart", "PopupEnd", "AllowReplay", "CounterDurationMs"]) {
+            page.querySelector("#" + id)?.addEventListener("change", () => markDirty(page));
+        }
+        page.querySelector("#SiteName")?.addEventListener("input", () => markDirty(page));
         page.querySelector("#ReportYear")?.addEventListener("input", function () {
-            livePreviewDataPromise = null;
             markDirty(page);
-        });
-        page.querySelector("#WrappedPreviewUser")?.addEventListener("change", function () {
-            livePreviewDataPromise = null;
         });
 
         document.addEventListener("keydown", function wrappedKeyboardHandler(event) {
@@ -339,9 +351,14 @@ async function initialize(page) {
                 );
         }
 
+        setValue(page, "SiteName", normalizedSiteName(configuration.SiteName));
         excludedUserIds = new Set((configuration.ExcludedUserIds || []).map(String));
         const yearInput = page.querySelector("#ReportYear");
         if (yearInput) yearInput.value = Number(configuration.ReportYear) || "";
+        for (const id of ["PopupStart", "PopupEnd", "CounterDurationMs"]) {
+            page.querySelector("#" + id).value = configuration[id] ?? (id === "CounterDurationMs" ? 1100 : "");
+        }
+        setChecked(page, "AllowReplay", configuration.AllowReplay !== false);
         updateMasterState(page);
     }
 
@@ -374,8 +391,7 @@ async function initialize(page) {
                 checkbox.addEventListener("change", function () {
                     if (checkbox.checked) excludedUserIds.add(id);
                     else excludedUserIds.delete(id);
-                    livePreviewDataPromise = null;
-                    refreshPreviewUserOptions(select, currentUser);
+                            refreshPreviewUserOptions(select, currentUser);
                     markDirty(page);
                 });
                 list.appendChild(label);
@@ -428,6 +444,17 @@ async function initialize(page) {
             configuration.EnableGlowEffects =
                 page.querySelector("#EnableGlowEffects")?.checked === true;
 
+            const start = page.querySelector("#PopupStart").value;
+            const end = page.querySelector("#PopupEnd").value;
+            if (start && end && end < start) {
+                showSaveMessage(page, "Popup end must be on or after the start date.", "error");
+                return;
+            }
+            configuration.SiteName = normalizedSiteName(page.querySelector("#SiteName").value);
+            configuration.PopupStart = start;
+            configuration.PopupEnd = end;
+            configuration.AllowReplay = page.querySelector("#AllowReplay").checked;
+            configuration.CounterDurationMs = clampNumber(page.querySelector("#CounterDurationMs").value, 100, 5000, 1100);
             configuration.ExcludedUserIds = [...excludedUserIds];
             const chosenYear = Number(page.querySelector("#ReportYear")?.value || 0);
             configuration.ReportYear = Number.isInteger(chosenYear) && chosenYear >= 2000 && chosenYear <= 2100 ? chosenYear : 0;
@@ -759,13 +786,13 @@ async function initialize(page) {
         markDirty(page);
     }
 
-    function resetDefaultSlides(page) {
-        if (!window.confirm("Reset Jelly-Wrapped to the 11 default slides? Your current slide layout will be replaced after you save.")) {
-            return;
-        }
-
-        slides = [
-            { Type: "Intro", Title: "Your year on Dreamstreaming", Subtitle: "This was your year.", Animation: "Cinematic", BackgroundStyle: "Dynamic", ShowArtwork: false },
+    function defaultSlides() {
+        return [
+            { Type: "Intro", Title: "Your year on {SiteName}", Subtitle: "This was your year.", Animation: "Cinematic", BackgroundStyle: "Dynamic", ShowArtwork: false },
+            { Type: "LibraryTotal", Title: "A library full of stories", Animation: "CounterBounce", ShowArtwork: false },
+            { Type: "CustomText", Title: "Now, your year in stories", Subtitle: "Here’s what you made time for.", Animation: "Reveal", ShowArtwork: false, ShowValue: false },
+            { Type: "CombinedTotal", Title: "It all adds up", Animation: "Counter", ShowArtwork: false },
+            { Type: "FavoriteFranchise", Title: "One universe wasn’t enough", Animation: "Drift", BackgroundStyle: "Artwork" },
             { Type: "WatchTime", Title: "You watched...", Subtitle: "", Animation: "Counter", BackgroundStyle: "Gradient" },
             { Type: "MoviesWatched", Title: "Movie nights", Subtitle: "", Animation: "SlideUp", BackgroundStyle: "Dynamic" },
             { Type: "EpisodesWatched", Title: "Just one more episode...", Subtitle: "", Animation: "Counter", BackgroundStyle: "Dynamic" },
@@ -787,7 +814,11 @@ async function initialize(page) {
             }, slide), index);
         });
 
-        console.log("[Wrapped] Reset slides:", slides.length);
+    }
+
+    function resetDefaultSlides(page) {
+        if (!window.confirm("Reset Jelly-Wrapped to the default slides? Your current layout will be replaced after you save.")) return;
+        slides = defaultSlides();
         editingSlideId = null;
         closeEditor(page);
         closePreview(page);
@@ -929,7 +960,7 @@ async function initialize(page) {
         if (overlay) {
             overlay.dataset.slideId = slide.Id;
             overlay.dataset.slideIndex = String(index);
-            overlay.inert = false;
+        overlay.inert = false;
             overlay.removeAttribute("inert");
             overlay.classList.add("open");
             overlay.setAttribute("aria-hidden", "false");
@@ -1118,32 +1149,245 @@ async function initialize(page) {
 }
 #wrappedPreviewOverlay.wrapped-fullscreen-preview.open[aria-hidden="false"] { display: block !important; }
 #wrappedPreviewOverlay .wrapped-preview-stage {
-    position: absolute !important; inset: 0 !important;
-    width: 100% !important; height: 100% !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
-    padding: 6vw !important; box-sizing: border-box !important;
+    --story-ink: #fffaf6;
+    --story-accent: #c4a8ff;
+    --story-wash: #492b70;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    align-items: center !important;
+    justify-items: center !important;
+    overflow: auto !important;
+    padding: clamp(3.75rem, 9vh, 7rem) clamp(1.25rem, 7vw, 7rem) clamp(5rem, 10vh, 8rem) !important;
+    box-sizing: border-box !important;
+    isolation: isolate;
 }
-#wrappedPreviewOverlay .wrapped-story-slide { position: relative !important; z-index: 2 !important; width: min(900px, 100%) !important; text-align: center !important; color: #fff !important; }
-#wrappedPreviewOverlay .wrapped-story-eyebrow { margin-bottom: 1rem !important; color: #b74bd1 !important; font-size: clamp(.7rem,1.2vw,.9rem) !important; font-weight: 800 !important; letter-spacing: .25em !important; }
-#wrappedPreviewOverlay .wrapped-story-slide h1 { max-width: 900px !important; margin: 0 auto !important; color: #fff !important; font-size: clamp(2rem,6vw,5rem) !important; font-weight: 850 !important; line-height: .98 !important; }
-#wrappedPreviewOverlay .wrapped-story-value { margin-top: 1.4rem !important; color: #fff !important; font-size: clamp(3rem,10vw,8rem) !important; font-weight: 900 !important; line-height: .95 !important; letter-spacing: -.04em !important; text-shadow: 0 0 50px rgba(183,75,209,.25) !important; }
-#wrappedPreviewOverlay .wrapped-story-subtitle { max-width: 700px !important; margin: 1.3rem auto 0 !important; color: rgba(255,255,255,.72) !important; font-size: clamp(1rem,2vw,1.4rem) !important; line-height: 1.5 !important; }
-#wrappedPreviewOverlay .wrapped-story-details { margin-top: 1rem !important; color: #b74bd1 !important; font-size: .9rem !important; font-weight: 600 !important; }
-#wrappedPreviewOverlay .wrapped-story-artwork { width: 150px !important; height: 210px !important; display: grid !important; place-items: center !important; margin: 2rem auto 0 !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 14px !important; background: linear-gradient(145deg,rgba(133,36,153,.4),rgba(255,255,255,.05)) !important; box-shadow: 0 20px 60px rgba(0,0,0,.35) !important; color: rgba(255,255,255,.55) !important; }
-#wrappedPreviewOverlay .wrapped-story-artwork img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: inherit !important; display: block !important; }
-#wrappedPreviewOverlay .wrapped-story-collage { display: flex !important; justify-content: center !important; align-items: center !important; gap: .8rem !important; margin: 2rem auto 0 !important; max-width: min(760px,90vw) !important; }
-#wrappedPreviewOverlay .wrapped-story-collage img { width: clamp(90px,12vw,145px) !important; aspect-ratio: 2/3 !important; object-fit: cover !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,.12) !important; box-shadow: 0 18px 45px rgba(0,0,0,.42) !important; }
-#wrappedPreviewOverlay .wrapped-preview-close { position: absolute !important; z-index: 10 !important; right: 2rem !important; top: 1.5rem !important; width: 44px !important; height: 44px !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 50% !important; background: rgba(0,0,0,.35) !important; color: #fff !important; font-size: 1.5rem !important; cursor: pointer !important; }
-#wrappedPreviewOverlay .wrapped-preview-navigation { position: absolute !important; z-index: 10 !important; left: 50% !important; bottom: 2rem !important; display: flex !important; align-items: center !important; gap: 1rem !important; width: min(700px,calc(100% - 3rem)) !important; transform: translateX(-50%) !important; }
-#wrappedPreviewOverlay .wrapped-preview-navigation button { width: 42px !important; height: 42px !important; flex-shrink: 0 !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 50% !important; background: rgba(255,255,255,.06) !important; color: #fff !important; font-size: 1.5rem !important; cursor: pointer !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress { display: flex !important; flex: 1 !important; gap: .3rem !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress span { height: 3px !important; flex: 1 !important; border-radius: 99px !important; background: rgba(255,255,255,.2) !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress span.active { background: #fff !important; }
-#wrappedPreviewOverlay .wrapped-bg-dynamic { background: radial-gradient(circle at 20% 20%,rgba(183,75,209,.35),transparent 35%),radial-gradient(circle at 80% 75%,rgba(85,18,103,.45),transparent 40%),#080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-gradient { background: linear-gradient(135deg,#18081d,#080809 55%,#25082d) !important; }
-#wrappedPreviewOverlay .wrapped-bg-artwork { background: radial-gradient(circle at center,rgba(133,36,153,.35),transparent 50%),#080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-dark { background: #080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-minimal { background: #111 !important; }
+#wrappedPreviewOverlay .wrapped-preview-stage::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: repeating-linear-gradient(120deg, #ffffff08 0 1px, transparent 1px 32px);
+    mask-image: linear-gradient(135deg, #000, transparent 65%);
+}
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="Intro"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="Outro"] {
+    --story-accent: #ffd3a8;
+    --story-wash: #713642;
+}
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="LibraryTotal"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="WatchTime"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="CombinedTotal"] {
+    --story-accent: #a5f6db;
+    --story-wash: #145b58;
+}
+#wrappedPreviewOverlay .wrapped-story-slide {
+    display: grid;
+    align-items: center;
+    gap: clamp(1.5rem, 4vw, 4rem);
+    width: min(100%, 66rem) !important;
+    box-sizing: border-box;
+    color: var(--story-ink) !important;
+    text-align: left !important;
+    font-family: system-ui, sans-serif;
+}
+#wrappedPreviewOverlay .wrapped-story-copy {
+    min-width: 0;
+    padding-inline-start: clamp(1rem, 3vw, 2.75rem);
+    border-inline-start: 2px solid var(--story-accent);
+}
+#wrappedPreviewOverlay .wrapped-story-eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem 1rem;
+    margin-bottom: clamp(1rem, 3vh, 2rem) !important;
+    color: var(--story-accent) !important;
+    font-size: .75rem !important;
+    font-weight: 750 !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase;
+}
+#wrappedPreviewOverlay .wrapped-story-brand {
+    max-width: 100%;
+    padding: .35rem .6rem;
+    border: 1px solid currentColor;
+    border-radius: .4rem;
+    overflow-wrap: anywhere;
+}
+#wrappedPreviewOverlay .wrapped-story-slide h1 {
+    max-width: 18ch !important;
+    margin: 0 !important;
+    color: var(--story-ink) !important;
+    font-size: clamp(1.85rem, 5vw, 4.6rem) !important;
+    font-weight: 760 !important;
+    line-height: 1.06 !important;
+    letter-spacing: -.055em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+#wrappedPreviewOverlay [data-story-type="Intro"] h1 {
+    font-size: clamp(2.5rem, 8vw, 7.2rem) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-value {
+    margin-top: .65em !important;
+    color: var(--story-accent) !important;
+    font-size: clamp(2rem, 6vw, 5rem) !important;
+    font-weight: 850 !important;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05 !important;
+    letter-spacing: -.045em !important;
+    overflow-wrap: anywhere;
+    text-shadow: 0 0 35px color-mix(in srgb, var(--story-accent) 24%, transparent) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-value[data-counter]:not([data-counter=""]) {
+    font-size: clamp(2.8rem, 10vw, 8rem) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-subtitle {
+    max-width: 48ch !important;
+    margin: .85rem 0 0 !important;
+    color: #f5edf4dd !important;
+    font-size: clamp(.95rem, 2vw, 1.35rem) !important;
+    line-height: 1.45 !important;
+}
+#wrappedPreviewOverlay .wrapped-story-details {
+    margin-top: .8rem !important;
+    color: var(--story-accent) !important;
+    font-size: .9rem !important;
+}
+#wrappedPreviewOverlay .wrapped-story-artwork {
+    width: min(11rem, 42vw) !important;
+    aspect-ratio: 2 / 3;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    border: 1px solid #ffffff40 !important;
+    border-radius: .8rem !important;
+    background: var(--story-wash) !important;
+    box-shadow: 0 18px 55px #0008 !important;
+    color: var(--story-ink) !important;
+    overflow: hidden;
+}
+#wrappedPreviewOverlay .wrapped-story-artwork img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+#wrappedPreviewOverlay .wrapped-story-collage {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(2.5rem, 1fr));
+    gap: .4rem !important;
+    width: min(100%, 23rem);
+    margin: 0 !important;
+}
+#wrappedPreviewOverlay .wrapped-story-collage img {
+    width: 100% !important;
+    min-width: 0;
+    aspect-ratio: 2 / 3 !important;
+    object-fit: cover !important;
+    border: 1px solid #ffffff38 !important;
+    border-radius: .45rem !important;
+    box-shadow: 0 10px 20px #0006;
+}
+#wrappedPreviewOverlay .wrapped-preview-close,
+#wrappedPreviewOverlay .wrapped-preview-navigation button {
+    display: grid !important;
+    place-items: center;
+    width: 44px !important;
+    height: 44px !important;
+    flex-shrink: 0;
+    padding: 0 !important;
+    border: 1px solid #ffffff40 !important;
+    border-radius: .6rem !important;
+    background: #151021 !important;
+    color: #fff !important;
+    font: 1.4rem system-ui !important;
+    cursor: pointer;
+}
+#wrappedPreviewOverlay button:focus-visible {
+    outline: 2px solid #a5f6db;
+    outline-offset: 3px;
+}
+#wrappedPreviewOverlay .wrapped-preview-close {
+    position: absolute !important;
+    z-index: 10;
+    right: clamp(.8rem, 4vw, 3rem);
+    top: clamp(.8rem, 3vh, 2rem);
+}
+#wrappedPreviewOverlay .wrapped-preview-navigation {
+    position: absolute !important;
+    z-index: 10;
+    inset: auto 0 0;
+    display: flex !important;
+    align-items: center !important;
+    gap: clamp(.35rem, 2vw, 1rem);
+    width: auto !important;
+    margin: 0 !important;
+    padding: .65rem clamp(.8rem, 7vw, 7rem) max(.65rem, env(safe-area-inset-bottom)) !important;
+    transform: none !important;
+    background: linear-gradient(transparent, #100c18f5 35%);
+}
+#wrappedPreviewOverlay .wrapped-preview-progress {
+    display: flex !important;
+    flex: 1;
+    gap: .2rem;
+}
+#wrappedPreviewOverlay .wrapped-preview-progress span {
+    height: 4px;
+    flex: 1;
+    border-radius: 99px;
+    background: #ffffff33;
+}
+#wrappedPreviewOverlay .wrapped-preview-progress span.active { background: #a5f6db !important; }
+#wrappedPreviewOverlay .wrapped-bg-dynamic {
+    background: radial-gradient(ellipse at 90% 15%, var(--story-wash), transparent 62%), #130e1e !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-gradient {
+    background: linear-gradient(120deg, #140e20 28%, var(--story-wash)) !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-artwork {
+    background-color: #180e23 !important;
+    background-position: center !important;
+    background-size: cover !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-dark { background: #0d0a15 !important; }
+#wrappedPreviewOverlay .wrapped-bg-minimal { background: #201a29 !important; }
+@media (min-width: 760px) {
+    #wrappedPreviewOverlay .wrapped-story-has-artwork {
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 28%);
+    }
+    #wrappedPreviewOverlay .wrapped-story-artwork { width: 100% !important; }
+}
+@media (max-height: 580px) and (max-width: 759px) {
+    #wrappedPreviewOverlay .wrapped-story-slide { gap: .75rem; }
+    #wrappedPreviewOverlay .wrapped-story-artwork { width: 5.5rem !important; }
+}
+#wrappedPreviewOverlay.wrapped-no-glow .wrapped-story-value { text-shadow: none !important; }
+#wrappedPreviewOverlay .wrapped-animation-fade { animation: wrappedRevealFade 550ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-up { animation: wrappedDrift 650ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-left { animation: wrappedSlideLeft 650ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-right { animation: wrappedSlideRight 650ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-zoom { animation: wrappedZoom 700ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-blur { animation: wrappedBlur 700ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-cinematic { animation: wrappedZoom 1100ms ease-out both; }
+@keyframes wrappedRevealFade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes wrappedSlideLeft { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+@keyframes wrappedSlideRight { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+@keyframes wrappedZoom { from { opacity: 0; transform: scale(.88); } to { opacity: 1; transform: none; } }
+@keyframes wrappedBlur { from { opacity: 0; filter: blur(12px); } to { opacity: 1; filter: none; } }
+#wrappedPreviewOverlay button[hidden] { display: none !important; }
+#wrappedPreviewOverlay .wrapped-animation-reveal { animation: wrappedReveal 700ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-drift { animation: wrappedDrift 850ms ease-out both; }
+#wrappedPreviewOverlay .wrapped-animation-bounce .wrapped-story-value { animation: wrappedBounce 650ms both; }
+@keyframes wrappedReveal { from { opacity: 0; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0); } }
+@keyframes wrappedDrift { from { opacity: 0; transform: translateY(25px) scale(.96); } to { opacity: 1; transform: none; } }
+@keyframes wrappedBounce { 0% { transform: scale(.85); } 65% { transform: scale(1.07); } 100% { transform: none; } }
+@media (prefers-reduced-motion: reduce) { #wrappedPreviewOverlay * { animation: none !important; transition: none !important; } }
+
 `;
         document.head.appendChild(style);
     }
@@ -1166,7 +1410,7 @@ async function initialize(page) {
                 url: ApiClient.getUrl("JellyWrapped/Eligibility", { userId: chosenUser }),
                 dataType: "json"
             });
-            if (!access || access.Eligible !== true) {
+            if ((access?.Eligible ?? access?.eligible) !== true) {
                 showSaveMessage(livePage, "This user is excluded from Jelly-Wrapped. Save settings if you just changed access.", "error");
                 return;
             }
@@ -1176,18 +1420,15 @@ async function initialize(page) {
             return;
         }
 
-        // Load real Jellyfin user/library metadata once per page session.
-        // This uses played-item metadata (including PlayCount and RuntimeTicks).
-        // A dedicated playback-history source can replace this later for exact per-year timing.
+        // Re-read the selected user’s history for each preview.
         try {
-            if (!livePreviewDataPromise) {
-                livePreviewDataPromise = loadLivePreviewData(chosenUser);
-            }
-            livePreviewData = await livePreviewDataPromise;
-            console.log("[Wrapped] Live metadata loaded", livePreviewData);
+            livePreviewData = await loadLivePreviewData(chosenUser);
+            Object.assign(livePreviewData, await loadRecordedStatistics(chosenUser,
+                Number(livePage.querySelector("#ReportYear")?.value || configuration.ReportYear) || new Date().getUTCFullYear()));
         } catch (error) {
-            console.warn("[Wrapped] Could not load live metadata; using preview fallback data.", error);
-            livePreviewData = null;
+            console.warn("[Wrapped] Could not load live statistics.", error);
+            showSaveMessage(livePage, "Could not load the selected viewer’s statistics.", "error");
+            return;
         }
 
         previewSlides = slides.filter(function (slide) {
@@ -1199,6 +1440,10 @@ async function initialize(page) {
             return;
         }
 
+        showPresentation(livePage);
+    }
+
+    function showPresentation(livePage) {
         previewIndex = 0;
 
         const overlay = document.getElementById("wrappedPreviewOverlay") || livePage.querySelector("#wrappedPreviewOverlay");
@@ -1242,6 +1487,11 @@ async function initialize(page) {
                         nextPreview(document);
                         break;
 
+                    case "replayPreview":
+                        previewIndex = 0;
+                        renderPreviewSlide(document);
+                        break;
+
                     case "closeWrappedPreview":
                         event.preventDefault();
                         event.stopPropagation();
@@ -1251,6 +1501,10 @@ async function initialize(page) {
             });
         }
 
+        overlay.querySelector("#replayPreview").hidden = viewerMode && configuration.AllowReplay === false;
+        const glow = viewerMode ? configuration.EnableGlowEffects !== false
+            : document.getElementById("EnableGlowEffects")?.checked !== false;
+        overlay.classList.toggle("wrapped-no-glow", !glow);
         overlay.inert = false;
         overlay.removeAttribute("inert");
         overlay.classList.add("open");
@@ -1299,14 +1553,8 @@ async function initialize(page) {
             return;
         }
 
+        if (previewIndex >= previewSlides.length - 1) return;
         previewIndex++;
-
-        if (
-            previewIndex >=
-            previewSlides.length
-        ) {
-            previewIndex = 0;
-        }
 
         renderPreviewSlide(page);
     }
@@ -1352,6 +1600,14 @@ async function initialize(page) {
         );
     }
 
+    function normalizedSiteName(value) {
+        return String(value ?? "").trim().slice(0, 80) || "Dreamstreaming";
+    }
+
+    function formatSlideCopy(value, siteName) {
+        return String(value ?? "").replace(/\{SiteName\}/gi, () => siteName);
+    }
+
     function renderPreviewSlide(page) {
         stopPreviewTimer();
 
@@ -1376,72 +1632,74 @@ async function initialize(page) {
             preview.backgroundUrl || preview.artworkUrl || ""
         );
 
-        const title =
-            slide.Title ||
-            preview.defaultTitle;
+        const siteName = normalizedSiteName(viewerMode ? configuration.SiteName
+            : document.getElementById("SiteName")?.value ?? configuration?.SiteName);
+        const savedTitle = String(slide.Title || "").trim();
+        const titleTemplate = slide.Type === "Intro" &&
+            /^your year on dreamstreaming$/i.test(savedTitle)
+            ? "Your year on {SiteName}"
+            : savedTitle || preview.defaultTitle;
+        const title = formatSlideCopy(titleTemplate, siteName);
+        const subtitle = formatSlideCopy(slide.Subtitle || preview.subtitle, siteName);
+        stage.dataset.storyType = slide.Type;
+        const hasArtwork = slide.ShowArtwork && Boolean(preview.artworkUrl || preview.artworkLabel || preview.artworkUrls?.length);
 
-        const subtitle =
-            slide.Subtitle ||
-            preview.subtitle;
-
+        const animationsEnabled = viewerMode ? configuration.EnableAnimations !== false
+            : document.getElementById("EnableAnimations")?.checked !== false;
         const animationClass =
-            configuration?.EnableAnimations === false
+            !animationsEnabled
                 ? "wrapped-animation-none"
                 : getAnimationClass(
                     slide.Animation
                 );
 
         stage.innerHTML = `
-            <div class="wrapped-story-slide ${animationClass}">
+            <div class="wrapped-story-slide ${animationClass}${hasArtwork ? " wrapped-story-has-artwork" : ""}">
+                <div class="wrapped-story-copy">
+                    <div class="wrapped-story-eyebrow">
+                        ${slide.Type === "Intro" ? "" : `<span class="wrapped-story-brand">${escapeHtml(siteName)}</span>`}
+                        <span>${escapeHtml(preview.eyebrow)}</span>
+                    </div>
 
-                <div class="wrapped-story-eyebrow">
-                    ${escapeHtml(
-                        preview.eyebrow
-                    )}
+                    <h1>
+                        ${escapeHtml(title)}
+                    </h1>
+
+                    ${
+                        slide.ShowValue &&
+                        preview.value
+                            ? `
+                                <div class="wrapped-story-value"
+                                     data-counter="${escapeHtml(
+                                         preview.counter || ""
+                                     )}">
+                                    ${escapeHtml(formatSlideCopy(preview.value, siteName))}
+                                </div>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        subtitle
+                            ? `
+                                <p class="wrapped-story-subtitle">
+                                    ${escapeHtml(subtitle)}
+                                </p>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        slide.ShowDetails &&
+                        preview.details
+                            ? `
+                                <div class="wrapped-story-details">
+                                    ${escapeHtml(formatSlideCopy(preview.details, siteName))}
+                                </div>
+                              `
+                            : ""
+                    }
                 </div>
-
-                <h1>
-                    ${escapeHtml(title)}
-                </h1>
-
-                ${
-                    slide.ShowValue &&
-                    preview.value
-                        ? `
-                            <div class="wrapped-story-value"
-                                 data-counter="${escapeHtml(
-                                     preview.counter || ""
-                                 )}">
-                                ${escapeHtml(
-                                    preview.value
-                                )}
-                            </div>
-                          `
-                        : ""
-                }
-
-                ${
-                    subtitle
-                        ? `
-                            <p class="wrapped-story-subtitle">
-                                ${escapeHtml(subtitle)}
-                            </p>
-                          `
-                        : ""
-                }
-
-                ${
-                    slide.ShowDetails &&
-                    preview.details
-                        ? `
-                            <div class="wrapped-story-details">
-                                ${escapeHtml(
-                                    preview.details
-                                )}
-                            </div>
-                          `
-                        : ""
-                }
 
                 ${
                     slide.ShowArtwork && Array.isArray(preview.artworkUrls) && preview.artworkUrls.length
@@ -1459,8 +1717,8 @@ async function initialize(page) {
         renderPreviewProgress(page);
 
         if (
-            slide.Animation === "Counter" &&
-            configuration?.EnableAnimations !== false
+            ["Counter", "CounterBounce"].includes(slide.Animation) &&
+            animationsEnabled
         ) {
             animateCounter(stage, preview);
         }
@@ -1470,16 +1728,15 @@ async function initialize(page) {
 
     function scheduleNextPreview(page) {
         if (
-            page.querySelector("#AutoAdvance")?.checked !== true
+            previewIndex >= previewSlides.length - 1 ||
+            (viewerMode ? configuration.AutoAdvance === false : page.querySelector("#AutoAdvance")?.checked !== true)
         ) {
             return;
         }
 
         const seconds =
             clampNumber(
-                page.querySelector(
-                    "#SlideDurationSeconds"
-                )?.value,
+                viewerMode ? configuration.SlideDurationSeconds : page.querySelector("#SlideDurationSeconds")?.value,
                 2,
                 60,
                 8
@@ -1504,26 +1761,9 @@ async function initialize(page) {
         }
     }
 
-    async function loadLibraryAdditions(userId) {
-        const all = [];
-        const pageSize = 500;
-        const maxItems = 100000;
-        while (all.length < maxItems) {
-            const url = ApiClient.getUrl("Items", {
-                UserId: userId, Recursive: true,
-                IncludeItemTypes: "Movie,Episode",
-                Fields: "DateCreated",
-                StartIndex: all.length,
-                Limit: pageSize,
-                EnableUserData: false,
-                EnableImages: false
-            });
-            const response = await ApiClient.ajax({ type: "GET", url, dataType: "json" });
-            const batch = Array.isArray(response?.Items) ? response.Items : [];
-            all.push(...batch);
-            if (batch.length < pageSize || all.length >= Number(response?.TotalRecordCount || 0)) break;
-        }
-        return all;
+    function loadLibraryAdditions(userId) {
+        return fetchItems({ UserId: userId, Recursive: true, IncludeItemTypes: "Movie,Episode",
+            Fields: "DateCreated", EnableUserData: false, EnableImages: false });
     }
 
     async function loadLivePreviewData(userId) {
@@ -1536,27 +1776,10 @@ async function initialize(page) {
         // Use the supported /Items route with explicit UserId and only valid ItemFields.
         // RunTimeTicks, SeriesId, UserData and image tags are BaseItemDto properties,
         // not ItemFields enum members. EnableUserData requests the play counts.
-        const url = ApiClient.getUrl(
-            "Items",
-            {
-                UserId: userId,
-                Recursive: true,
-                IsPlayed: true,
-                IncludeItemTypes: "Movie,Episode",
-                Fields: "Genres",
-                EnableUserData: true,
-                EnableImages: true,
-                Limit: 10000
-            }
-        );
-
-        const response = await ApiClient.ajax({
-            type: "GET",
-            url: url,
-            dataType: "json"
+        const items = await fetchItems({
+            UserId: userId, Recursive: true, IsPlayed: true, IncludeItemTypes: "Movie,Episode",
+            Fields: "Genres", EnableUserData: true, EnableImages: true
         });
-
-        const items = Array.isArray(response?.Items) ? response.Items : [];
         const movies = items.filter(item => item.Type === "Movie");
         const episodes = items.filter(item => item.Type === "Episode");
         const seriesCounts = new Map();
@@ -1641,17 +1864,10 @@ async function initialize(page) {
             .slice(0, 5)
             .map(id => jellyfinImageUrl(id, "Primary"));
 
-        console.log("[Wrapped] Artwork URLs", {
-            moviePosters: moviePosterUrls,
-            seriesPosters: seriesPosterUrls,
-            favoriteMovie: favoriteMovie ? jellyfinImageUrl(favoriteMovie.Id, "Primary") : "",
-            favoriteSeries: favoriteSeries ? jellyfinImageUrl(favoriteSeries[1].item?.SeriesId || favoriteSeries[1].item?.Id, "Primary") : ""
-        });
-
         // Library additions must not use IsPlayed=true: that would miss uploads
         // for episodes that have not been watched. DateCreated is an estimate of
         // when Jellyfin added the item, not a verifiable file upload event.
-        const reportYear = Number(configuration?.ReportYear) || new Date().getUTCFullYear();
+        const reportYear = Number((viewerMode ? null : document.getElementById("ReportYear")?.value) || configuration?.ReportYear) || new Date().getUTCFullYear();
         const addedItems = await loadLibraryAdditions(userId);
         const episodesAdded = addedItems.filter(item =>
             item.Type === "Episode" && new Date(item.DateCreated).getUTCFullYear() === reportYear
@@ -1681,7 +1897,7 @@ async function initialize(page) {
             },
             WatchTime: {
                 value: hours.toLocaleString(), counter: String(hours),
-                subtitle: "hours watched", details: "Based on your Jellyfin played-item metadata."
+                subtitle: "estimated lifetime hours", details: "Based on Jellyfin play counts and runtimes."
             },
             MoviesWatched: {
                 value: movies.length.toLocaleString(), counter: String(movies.length),
@@ -1731,7 +1947,7 @@ async function initialize(page) {
             Intro: {
                 eyebrow: "YOUR YEAR",
                 defaultTitle:
-                    "Your year with Jelly-Wrapped",
+                    "Your year on {SiteName}",
                 value: "",
                 subtitle:
                     "A whole year of movies, series and questionable sleep schedules.",
@@ -2000,7 +2216,14 @@ async function initialize(page) {
 
         const fallback = data[type] || data.CustomText;
         const live = livePreviewData && livePreviewData[type];
-        return live ? Object.assign({}, fallback, live) : fallback;
+        if (live) return Object.assign({}, fallback, {
+            value: "", counter: "", details: "", artworkLabel: "", ...live
+        });
+        if (["Intro", "CustomText", "Outro", "FunFact"].includes(type)) return fallback;
+        return {
+            eyebrow: getSlideName(type), defaultTitle: getSlideName(type),
+            value: "—", subtitle: "No recorded data for this slide."
+        };
     }
 
     // =========================================================
@@ -2026,7 +2249,7 @@ async function initialize(page) {
         if (artworkUrl && String(style || "").toLowerCase() === "artwork") {
             const safeUrl = String(artworkUrl).replace(/'/g, "%27");
             stage.style.backgroundImage =
-                "linear-gradient(180deg,rgba(5,5,6,.28),rgba(5,5,6,.88)),url('" + safeUrl + "')";
+                "linear-gradient(110deg,rgba(13,9,22,.98) 12%,rgba(13,9,22,.76) 55%,rgba(13,9,22,.45)),url('" + safeUrl + "')";
             stage.style.backgroundSize = "cover";
             stage.style.backgroundPosition = "center";
         } else {
@@ -2056,6 +2279,9 @@ async function initialize(page) {
             Blur:
                 "wrapped-animation-blur",
 
+            Reveal: "wrapped-animation-reveal",
+            Drift: "wrapped-animation-drift",
+            CounterBounce: "wrapped-animation-bounce",
             Counter:
                 "wrapped-animation-fade",
 
@@ -2093,14 +2319,11 @@ async function initialize(page) {
             return;
         }
 
-        const suffix =
-            preview.value
-                .replace(
-                    preview.counter,
-                    ""
-                );
-
-        const duration = 1100;
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+        const duration = clampNumber(
+            (viewerMode ? null : document.getElementById("CounterDurationMs")?.value)
+                ?? configuration?.CounterDurationMs, 100, 5000, 1100
+        );
         const start =
             performance.now();
 
@@ -2124,9 +2347,10 @@ async function initialize(page) {
                     target * eased
                 );
 
-            element.textContent =
-                value.toLocaleString() +
-                suffix;
+            if (!element.isConnected) return;
+            element.textContent = progress === 1
+                ? preview.value
+                : value.toLocaleString() + (preview.counterSuffix || "");
 
             if (progress < 1) {
                 requestAnimationFrame(
@@ -2292,6 +2516,230 @@ async function initialize(page) {
             type ||
             "Slide"
         );
+    }
+
+    function getJson(path, query) {
+        return ApiClient.ajax({ type: "GET", url: ApiClient.getUrl(path, query), dataType: "json" });
+    }
+
+    // Jellyfin releases and reverse-proxy integrations can serialize these DTOs
+    // using either PascalCase or camelCase.
+    function field(object, name) {
+        return object?.[name] ?? object?.[name[0].toLowerCase() + name.slice(1)];
+    }
+
+    function itemKey(id) {
+        return String(id || "").replaceAll("-", "").toLowerCase();
+    }
+
+    async function fetchItems(query) {
+        const items = [];
+        while (true) {
+            const result = await getJson("Items", { ...query, StartIndex: items.length, Limit: 500 });
+            const batch = field(result, "Items") || [];
+            items.push(...batch);
+            if (batch.length < 500 || items.length >= field(result, "TotalRecordCount")) return items;
+        }
+    }
+
+    function durationLabel(seconds) {
+        const total = Math.max(0, Math.floor(Number(seconds) || 0));
+        const parts = [
+            [Math.floor(total / 86400), "d"],
+            [Math.floor(total % 86400 / 3600), "h"],
+            [Math.floor(total % 3600 / 60), "m"],
+            [total % 60, "s"]
+        ];
+        return parts.filter(([value]) => value > 0).map(([value, unit]) => value + unit).join(" ") || "0s";
+    }
+
+    function countStat(value, subtitle, details = "") {
+        return { value: value.toLocaleString(), counter: String(value), subtitle, details };
+    }
+
+    function rankedStat(entry, subtitle) {
+        if (!entry) return { value: "—", subtitle: "No recorded viewing in this category." };
+        return {
+            value: entry.name, subtitle,
+            details: durationLabel(entry.seconds) + " watched",
+            artworkUrl: entry.id ? ApiClient.getUrl("Items/" + encodeURIComponent(entry.id) + "/Images/Primary", { maxWidth: 600 }) : ""
+        };
+    }
+
+    async function loadRecordedStatistics(userId, year) {
+        const payload = await getJson("JellyWrapped/Statistics", { userId, year });
+        const libraryTotal = Number(field(payload, "LibraryTotal") || 0);
+        const output = {
+            LibraryTotal: countStat(libraryTotal, "movies and episodes currently on the server"),
+            CombinedTotal: { value: "—", subtitle: "Playback Reporting history is unavailable." },
+            FavoriteFranchise: { value: "—", subtitle: "Playback Reporting history is unavailable." }
+        };
+        if (!field(payload, "HistoryAvailable")) return output;
+
+        const entries = (field(payload, "Entries") || []).map(entry => ({
+            id: field(entry, "Id"), name: field(entry, "Name"), type: field(entry, "Type"),
+            seconds: Number(field(entry, "Seconds")), plays: Number(field(entry, "Plays"))
+        }));
+        const watched = new Map(entries.map(entry => [itemKey(entry.id), entry]));
+        const movies = entries.filter(entry => entry.type === "Movie");
+        const episodes = entries.filter(entry => entry.type === "Episode");
+        const seconds = entries.reduce((sum, entry) => sum + entry.seconds, 0);
+        const baseQuery = { UserId: userId, Recursive: true, EnableUserData: false, EnableImages: false };
+        const series = new Map();
+        const genres = new Map();
+
+        if (entries.length) {
+            const catalog = await fetchItems({ ...baseQuery, IncludeItemTypes: "Movie,Episode", Fields: "Genres" });
+            for (const item of catalog) {
+                const entry = watched.get(itemKey(item.Id));
+                if (!entry) continue;
+                for (const genre of item.Genres || []) genres.set(genre, (genres.get(genre) || 0) + entry.seconds);
+                if (!item.SeriesId) continue;
+                const group = series.get(item.SeriesId) ?? { id: item.SeriesId, name: item.SeriesName, seconds: 0 };
+                group.seconds += entry.seconds;
+                series.set(item.SeriesId, group);
+            }
+        }
+
+        const ranked = entries => [...entries].sort((a, b) => b.seconds - a.seconds || String(a.name).localeCompare(String(b.name)))[0];
+        let franchise = null;
+        if (movies.length) {
+            const collections = await fetchItems({ ...baseQuery, IncludeItemTypes: "BoxSet" });
+            for (let offset = 0; offset < collections.length; offset += 5) {
+                const batch = await Promise.all(collections.slice(offset, offset + 5).map(async collection => {
+                    const members = await fetchItems({ ...baseQuery, ParentId: collection.Id, IncludeItemTypes: "Movie" });
+                    const ids = new Set(members.map(item => itemKey(item.Id)));
+                    return { id: collection.Id, name: collection.Name,
+                        seconds: [...ids].reduce((sum, id) => sum + (watched.get(id)?.seconds || 0), 0) };
+                }));
+                franchise = ranked([...batch, ...(franchise ? [franchise] : [])].filter(entry => entry.seconds > 0)) || null;
+            }
+        }
+
+        const topGenre = [...genres.entries()].sort((a, b) => b[1] - a[1])[0];
+        return Object.assign(output, {
+            WatchTime: { value: durationLabel(seconds), subtitle: "registered watch time in " + year,
+                details: seconds.toLocaleString() + " seconds recorded by Playback Reporting" },
+            CombinedTotal: countStat(entries.length, "different movies and episodes watched",
+                movies.length + " movies + " + episodes.length + " episodes · " + durationLabel(seconds)),
+            MoviesWatched: countStat(movies.length, "different movies watched in " + year),
+            EpisodesWatched: countStat(episodes.length, "different episodes watched in " + year),
+            SeriesWatched: countStat(series.size, "different series watched in " + year),
+            FavoriteMovie: rankedStat(ranked(movies), "Your most watched movie"),
+            FavoriteSeries: rankedStat(ranked(series.values()), "Your most watched series"),
+            FavoriteFranchise: rankedStat(franchise, "Your most watched Jellyfin film collection"),
+            FavoriteGenre: topGenre ? { value: topGenre[0], subtitle: "Your most watched genre", details: durationLabel(topGenre[1]) } : null
+        });
+    }
+
+    function startViewer() {
+        if (window.jellyWrappedViewerLoaded) return;
+        window.jellyWrappedViewerLoaded = true;
+
+        let loading = false;
+        let campaign = "";
+        const replay = document.createElement("button");
+        replay.type = "button";
+        replay.textContent = "Replay Jelly-Wrapped";
+        replay.style.cssText = "position:fixed;z-index:1000;right:1rem;bottom:1rem;padding:.7rem 1rem;border:0;border-radius:2rem;background:#45246b;color:white;cursor:pointer";
+
+        function createOverlay() {
+            const overlay = document.createElement("div");
+            overlay.id = "wrappedPreviewOverlay";
+            overlay.className = "wrapped-fullscreen-preview";
+            overlay.setAttribute("role", "dialog");
+            overlay.setAttribute("aria-label", "Jelly-Wrapped");
+            overlay.setAttribute("aria-hidden", "true");
+            overlay.innerHTML = `
+                <div id="wrappedPreviewStage" class="wrapped-preview-stage"></div>
+                <button id="closeWrappedPreview" class="wrapped-preview-close" aria-label="Close">×</button>
+                <div class="wrapped-preview-navigation">
+                    <button id="previousPreviewSlide" aria-label="Previous slide">‹</button>
+                    <div id="previewProgress" class="wrapped-preview-progress"></div>
+                    <button id="replayPreview" aria-label="Replay from start">↺</button>
+                    <button id="nextPreviewSlide" aria-label="Next slide">›</button>
+                </div>`;
+            document.body.append(overlay);
+            return overlay;
+        }
+
+        const home = () => /^(?:#\/?(?:home(?:\.html)?)?(?:[?&].*)?)?$/i.test(location.hash) ||
+            /^#\/?home(?:[/?]|$)/i.test(location.hash);
+        const currentUser = () => window.ApiClient?.getCurrentUserId?.();
+
+        async function check(force = false) {
+            const userId = currentUser();
+            if (!home() || !userId) {
+                replay.remove();
+                const overlay = document.getElementById("wrappedPreviewOverlay");
+                if (overlay?.dataset.viewer === "true") {
+                    closePreview(document);
+                    overlay.remove();
+                }
+                return;
+            }
+            if (loading || document.getElementById(pageId)) return;
+            loading = true;
+            try {
+                const payload = await getJson("JellyWrapped/Presentation");
+                if (!payload || !home() || userId !== currentUser()) {
+                    replay.remove();
+                    return;
+                }
+
+                configuration = Object.fromEntries([
+                    "AllowReplay", "ReportYear", "EnableAnimations", "EnableGlowEffects",
+                    "AutoAdvance", "SlideDurationSeconds", "CounterDurationMs", "SiteName"
+                ].map(name => [name, field(payload, name)]));
+
+                if (configuration.AllowReplay) document.body.append(replay);
+                else replay.remove();
+
+                const key = "jelly-wrapped:" + userId + ":" + field(payload, "Campaign");
+                let seen = campaign === key;
+                try { seen ||= localStorage.getItem(key) === "seen"; } catch { /* Private browsing. */ }
+                if (force ? !configuration.AllowReplay : seen || !field(payload, "Popup")) return;
+
+                const configuredSlides = field(payload, "Slides") || [];
+                previewSlides = (configuredSlides.length ? configuredSlides.map((slide, index) =>
+                    normalizeSlide(Object.fromEntries(["Id", "Order", "Enabled", "Type", "Title", "Subtitle",
+                        "Animation", "BackgroundStyle", "ShowArtwork", "ShowValue", "ShowDetails"]
+                        .map(name => [name, field(slide, name)])), index)) : defaultSlides())
+                    .filter(slide => slide.Enabled).sort((a, b) => a.Order - b.Order);
+                if (!previewSlides.length) return;
+
+                livePreviewData = await loadLivePreviewData(userId);
+                Object.assign(livePreviewData, await loadRecordedStatistics(userId, configuration.ReportYear));
+                if (!home() || userId !== currentUser()) return;
+
+                const overlay = document.getElementById("wrappedPreviewOverlay") || createOverlay();
+                overlay.dataset.viewer = "true";
+                showPresentation(document);
+                overlay.querySelector("#closeWrappedPreview")?.focus();
+                campaign = key;
+                try { localStorage.setItem(key, "seen"); } catch { /* Private browsing. */ }
+            } catch (error) {
+                replay.remove();
+                console.warn("[Jelly-Wrapped] Viewer unavailable", error);
+            } finally {
+                loading = false;
+            }
+        }
+
+        replay.addEventListener("click", () => check(true));
+        window.addEventListener("hashchange", () => check());
+        document.addEventListener("keydown", event => {
+            const overlay = document.getElementById("wrappedPreviewOverlay");
+            if (overlay?.dataset.viewer !== "true" || !overlay.classList.contains("open")) return;
+            if (event.key === "Escape") closePreview(document);
+            else if (event.key === "ArrowLeft") previousPreview(document);
+            else if (event.key === "ArrowRight") nextPreview(document);
+            else return;
+            event.preventDefault();
+            event.stopImmediatePropagation();
+        }, true);
+        window.setInterval(() => check(), 30000);
+        window.setTimeout(() => check(), 1000);
     }
 
     function getSlideIcon(type) {

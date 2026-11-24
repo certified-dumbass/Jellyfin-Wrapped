@@ -24,9 +24,11 @@ This project grew out of Dreamstreaming Wrapped and is now branded independently
 
 | | Feature |
 |---|---|
-| 🎞️ | Fullscreen slideshow preview with animated transitions, artwork, and keyboard navigation |
+| 🎞️ | Fullscreen admin preview for a selected eligible viewer, with Replay and keyboard navigation |
+| ✨ | Three opening slides, a live library count, and configurable Reveal, Drift and Bouncing Counter animations |
+| 🗓️ | Scheduled Jellyfin Web popup with optional Replay after the campaign |
 | 🎨 | Visual slide builder: add, edit, reorder, enable/disable and reset slides |
-| ⏱️ | Watch-time estimate, played movies, played episodes, favorite series and favorite genres |
+| ⏱️ | Recorded annual watch time, combined movie and episode totals, and top series, movie, film collection and genre |
 | 🔒 | **Per-user exclusions**: admins can block selected Jellyfin accounts from receiving a Wrapped; server-side eligibility check |
 | 📺 | **Episodes Added**: count of episodes newly registered in the Jellyfin library for a selected calendar year |
 | 📅 | **Busiest Additions Month**: which month added the most movies and episodes |
@@ -35,7 +37,7 @@ This project grew out of Dreamstreaming Wrapped and is now branded independently
 
 **Important distinction:** "Episodes Watched" counts episodes marked as played. "Episodes Added" counts library entries with a `DateCreated` timestamp in the configured year, *even if nobody has watched them*. "Busiest Additions Month" counts movies **and** episodes together. Jellyfin's `DateCreated` is an approximate *library-added date*, **not** a verified file upload or acquisition timestamp; migrating/rebuilding libraries may affect it.
 
-**Data accuracy:** Playback-time figures are estimated from play counts and runtime metadata. This is not yet a reliable per-calendar-year playback-event history. Some slides without their own live data use demonstration values in the admin preview.
+**Viewing history:** install Jellyfin Playback Reporting and keep its retention long enough to cover the report year. Jelly-Wrapped opens its database read-only and totals recorded movie and episode seconds for the chosen viewer. Top series and film collections are ranked by those recorded seconds. A film collection is a Jellyfin collection containing movies. Library totals count all movie and episode entries. History that Playback Reporting never recorded or has already pruned cannot be recovered. When the database is absent, the watch-time slide labels the Jellyfin play-count estimate as lifetime and the combined and collection slides show that history is unavailable.
 
 ## 🚀 Installation
 
@@ -69,32 +71,38 @@ On Windows, you can run:
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The script packages the compiled DLL and `meta.json` into `release/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip`.
+The script packages the compiled DLL and `meta.json` into `release/Jelly-Wrapped-1.17.1.0-Jellyfin12.4.zip`.
 
 ## ⚙️ How to configure
 
 1. Go to **Dashboard → Plugins → Jelly-Wrapped → Settings**.
-2. Enable Wrapped, set your animation and slide timing preferences.
-3. Under **🔒 Who can receive Jelly-Wrapped?**, check any users who should **not** receive Wrapped; then click **Save Settings**.
-4. Optionally select a **Library statistics year**. Empty means the current UTC year.
-5. Open the slide editor to add **Episodes Added** or **Busiest Additions Month** slides, or choose **Reset Default Slides** to load the new 11-slide default (⚠️ resetting replaces the current layout after saving).
-6. Select an eligible Jellyfin user in **Preview for Jellyfin user** and click **Preview Wrapped**.
+2. Select the **Wrapped report year**, the **Popup start and end dates**, and whether viewers can **Replay**. Dates are UTC and the end date is inclusive. An empty start date disables viewer delivery.
+3. Choose which users receive Wrapped under **Who can receive Jelly-Wrapped?**. All enabled accounts are included until excluded.
+4. Set **Site or server name** and use `{SiteName}` in slide titles or subtitles. Edit slide titles, order, animations, artwork and timing. Existing layouts are preserved. To use the three opening slides and new statistics, add them in the slide editor or choose **Reset Default Slides** and save.
+5. Select an eligible account and click **Preview Wrapped**. Preview works before the scheduled popup. Use **↺** to replay it from the first slide. Save settings to apply access and delivery changes.
 
-### 🔐 Exclusion behavior
+### Enable the viewer popup in Jellyfin Web
 
-- All accounts are eligible by default until an admin excludes them.
-- The backend `GET /JellyWrapped/Eligibility` endpoint only allows a signed-in user to query their own eligibility; administrators can query others.
-- Disabled/blocked users are marked ineligible and blocked from the admin's recipient preview.
-- **Current scope:** this plugin currently includes an *admin slide editor and preview*. It does **not** automatically distribute Wrapped to every user or send emails. The eligibility endpoint is provided for integrations that distribute presentations, and those integrations must honor it. This is not a Jellyfin-wide permission setting.
+Install the [JavaScript Injector for Jellyfin 12](https://github.com/n00bcodr/Jellyfin-JavaScript-Injector/releases). In its dashboard, add and enable this inline snippet, then reload Jellyfin Web.
+
+```js
+(() => {
+    const script = document.createElement("script");
+    script.src = new URL("../JellyWrapped/viewer.js", window.location.href).href;
+    document.head.append(script);
+})();
+```
+
+The popup opens on the Jellyfin Web home screen once per browser profile, user and campaign. Replay remains on the home screen after the end date when enabled. Native clients need their own integration. The server checks the signed-in viewer for every presentation and statistics request. Only administrators can request another eligible account's statistics.
 
 ## 🧰 Developer notes
 
 - Preserve the plugin GUID `5f84d6a7-2c91-47b3-a65e-841e9d42f731` and assembly name `Wrapped.Core` when upgrading to keep existing Jellyfin configuration compatible.
 - `plugin.cs` – plugin registration and embedded web admin page.
 - `configuration/pluginConfiguration.cs` – configuration including `ExcludedUserIds` and `ReportYear`.
-- `controllers/jellywrappedcontroller.cs` – authenticated eligibility gate.
+- `controllers/jellywrappedcontroller.cs` – authenticated access, viewing history, and scheduled presentation endpoints.
 - `Web/config.html` – visual editor, recipient access list and settings.
-- `Web/standardcore.js` – admin preview and statistics (using Jellyfin `/Items`).
+- `Web/standardcore.js` – shared slideshow renderer, admin preview, viewer popup, and Jellyfin collection lookup.
 - `Models/`, `Services/` – original support code.
 
 **Privacy:** User choices are stored as Jellyfin plugin configuration. No data is sent to an external server by this plugin. API consumers should not expose another user's viewing information without permission.

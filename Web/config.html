@@ -1895,7 +1895,7 @@
                         </label>
 
                         <div class="fieldDescription">
-                            Adds Dreamstreaming-style purple glow effects
+                            Adds glow effects to the fullscreen slideshow
                             to supported Wrapped elements.
                         </div>
 
@@ -1926,9 +1926,30 @@
 
 
                     <div class="inputContainer">
-                        <label class="inputLabel" for="ReportYear">Library statistics year</label>
+                        <label class="inputLabel" for="SiteName">Site or server name</label>
+                        <input id="SiteName" type="text" maxlength="80" is="emby-input" placeholder="Dreamstreaming" />
+                        <div class="fieldDescription">Use {SiteName} in a slide title or subtitle. Preview uses the name entered here before you save.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label class="inputLabel" for="ReportYear">Wrapped report year</label>
                         <input id="ReportYear" type="number" min="2000" max="2100" is="emby-input" placeholder="2026" />
                         <div class="fieldDescription">Episode additions and busiest additions month use this calendar year (UTC). Leave empty for the current year. Jellyfin's DateCreated is an approximate library-added timestamp, not a file upload audit log.</div>
+                    </div>
+
+                    <div class="inputContainer">
+                        <label for="PopupStart">Popup start date (UTC)</label>
+                        <input id="PopupStart" type="date" />
+                        <label for="PopupEnd">Popup end date (UTC, inclusive)</label>
+                        <input id="PopupEnd" type="date" />
+                        <div class="fieldDescription">Leave the start date empty to keep automatic delivery off. Replay can remain available after the popup ends.</div>
+                    </div>
+                    <div class="inputContainer">
+                        <label><input id="AllowReplay" type="checkbox" /> Show viewer replay button</label>
+                    </div>
+                    <div class="inputContainer">
+                        <label for="CounterDurationMs">Number animation duration (milliseconds)</label>
+                        <input id="CounterDurationMs" type="number" min="100" max="5000" step="100" />
                     </div>
 
                     <div class="wrapped-status-row">
@@ -2201,6 +2222,9 @@
                             Favorite Movie
                         </option>
 
+                        <option value="LibraryTotal">Total library media</option>
+                        <option value="CombinedTotal">Movies and episodes combined</option>
+                        <option value="FavoriteFranchise">Most watched film collection</option>
                         <option value="FavoriteSeries">
                             Favorite Series
                         </option>
@@ -2355,6 +2379,9 @@
                             Animated Counter
                         </option>
 
+                        <option value="Reveal">Reveal</option>
+                        <option value="Drift">Drift</option>
+                        <option value="CounterBounce">Bouncing counter</option>
                         <option value="Cinematic">
                             Cinematic
                         </option>
@@ -2570,6 +2597,8 @@
                  class="wrapped-preview-progress">
             </div>
 
+
+            <button id="replayPreview" type="button" aria-label="Replay from the beginning">↺</button>
 
             <button id="nextPreviewSlide"
                     type="button"
