@@ -8,9 +8,9 @@
     <!-- Preserve assembly name and namespaces so the existing configuration and embedded-page IDs keep working. -->
     <AssemblyName>Wrapped.Core</AssemblyName>
     <RootNamespace>Wrapped.Core</RootNamespace>
-    <Version>1.17.0.0</Version>
-    <AssemblyVersion>1.17.0.0</AssemblyVersion>
-    <FileVersion>1.17.0.0</FileVersion>
+    <Version>1.17.1.0</Version>
+    <AssemblyVersion>1.17.1.0</AssemblyVersion>
+    <FileVersion>1.17.1.0</FileVersion>
     <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
   </PropertyGroup>
 

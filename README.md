@@ -71,14 +71,14 @@ On Windows, you can run:
 powershell -ExecutionPolicy Bypass -File .\build.ps1
 ```
 
-The script packages the compiled DLL and `meta.json` into `release/Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip`.
+The script packages the compiled DLL and `meta.json` into `release/Jelly-Wrapped-1.17.1.0-Jellyfin12.4.zip`.
 
 ## ⚙️ How to configure
 
 1. Go to **Dashboard → Plugins → Jelly-Wrapped → Settings**.
 2. Select the **Wrapped report year**, the **Popup start and end dates**, and whether viewers can **Replay**. Dates are UTC and the end date is inclusive. An empty start date disables viewer delivery.
 3. Choose which users receive Wrapped under **Who can receive Jelly-Wrapped?**. All enabled accounts are included until excluded.
-4. Edit slide titles, order, animations, artwork and timing. Existing layouts are preserved. To use the three opening slides and new statistics, add them in the slide editor or choose **Reset Default Slides** and save.
+4. Set **Site or server name** and use `{SiteName}` in slide titles or subtitles. Edit slide titles, order, animations, artwork and timing. Existing layouts are preserved. To use the three opening slides and new statistics, add them in the slide editor or choose **Reset Default Slides** and save.
 5. Select an eligible account and click **Preview Wrapped**. Preview works before the scheduled popup. Use **↺** to replay it from the first slide. Save settings to apply access and delivery changes.
 
 ### Enable the viewer popup in Jellyfin Web

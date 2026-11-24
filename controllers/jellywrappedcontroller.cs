@@ -54,7 +54,7 @@ public sealed class JellyWrappedController(
             Popup = popup, config.AllowReplay, ReportYear = year,
             Campaign = FormattableString.Invariant($"{year}:{start:yyyy-MM-dd}"),
             config.EnableAnimations, config.EnableGlowEffects, config.AutoAdvance,
-            config.SlideDurationSeconds, config.CounterDurationMs, config.Slides
+            config.SlideDurationSeconds, config.CounterDurationMs, config.SiteName, config.Slides
         });
     }
 

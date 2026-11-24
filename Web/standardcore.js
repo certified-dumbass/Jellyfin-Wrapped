@@ -271,6 +271,7 @@ async function initialize(page) {
         for (const id of ["PopupStart", "PopupEnd", "AllowReplay", "CounterDurationMs"]) {
             page.querySelector("#" + id)?.addEventListener("change", () => markDirty(page));
         }
+        page.querySelector("#SiteName")?.addEventListener("input", () => markDirty(page));
         page.querySelector("#ReportYear")?.addEventListener("input", function () {
             markDirty(page);
         });
@@ -350,6 +351,7 @@ async function initialize(page) {
                 );
         }
 
+        setValue(page, "SiteName", normalizedSiteName(configuration.SiteName));
         excludedUserIds = new Set((configuration.ExcludedUserIds || []).map(String));
         const yearInput = page.querySelector("#ReportYear");
         if (yearInput) yearInput.value = Number(configuration.ReportYear) || "";
@@ -448,6 +450,7 @@ async function initialize(page) {
                 showSaveMessage(page, "Popup end must be on or after the start date.", "error");
                 return;
             }
+            configuration.SiteName = normalizedSiteName(page.querySelector("#SiteName").value);
             configuration.PopupStart = start;
             configuration.PopupEnd = end;
             configuration.AllowReplay = page.querySelector("#AllowReplay").checked;
@@ -785,7 +788,7 @@ async function initialize(page) {
 
     function defaultSlides() {
         return [
-            { Type: "Intro", Title: "Your year on Dreamstreaming", Subtitle: "This was your year.", Animation: "Cinematic", BackgroundStyle: "Dynamic", ShowArtwork: false },
+            { Type: "Intro", Title: "Your year on {SiteName}", Subtitle: "This was your year.", Animation: "Cinematic", BackgroundStyle: "Dynamic", ShowArtwork: false },
             { Type: "LibraryTotal", Title: "A library full of stories", Animation: "CounterBounce", ShowArtwork: false },
             { Type: "CustomText", Title: "Now, your year in stories", Subtitle: "Here’s what you made time for.", Animation: "Reveal", ShowArtwork: false, ShowValue: false },
             { Type: "CombinedTotal", Title: "It all adds up", Animation: "Counter", ShowArtwork: false },
@@ -1146,32 +1149,223 @@ async function initialize(page) {
 }
 #wrappedPreviewOverlay.wrapped-fullscreen-preview.open[aria-hidden="false"] { display: block !important; }
 #wrappedPreviewOverlay .wrapped-preview-stage {
-    position: absolute !important; inset: 0 !important;
-    width: 100% !important; height: 100% !important;
-    display: flex !important; align-items: center !important; justify-content: center !important;
-    padding: 6vw !important; box-sizing: border-box !important;
+    --story-ink: #fffaf6;
+    --story-accent: #c4a8ff;
+    --story-wash: #492b70;
+    position: absolute !important;
+    inset: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    display: grid !important;
+    align-items: center !important;
+    justify-items: center !important;
+    overflow: auto !important;
+    padding: clamp(3.75rem, 9vh, 7rem) clamp(1.25rem, 7vw, 7rem) clamp(5rem, 10vh, 8rem) !important;
+    box-sizing: border-box !important;
+    isolation: isolate;
 }
-#wrappedPreviewOverlay .wrapped-story-slide { position: relative !important; z-index: 2 !important; width: min(900px, 100%) !important; text-align: center !important; color: #fff !important; }
-#wrappedPreviewOverlay .wrapped-story-eyebrow { margin-bottom: 1rem !important; color: #b74bd1 !important; font-size: clamp(.7rem,1.2vw,.9rem) !important; font-weight: 800 !important; letter-spacing: .25em !important; }
-#wrappedPreviewOverlay .wrapped-story-slide h1 { max-width: 900px !important; margin: 0 auto !important; color: #fff !important; font-size: clamp(2rem,6vw,5rem) !important; font-weight: 850 !important; line-height: .98 !important; }
-#wrappedPreviewOverlay .wrapped-story-value { margin-top: 1.4rem !important; color: #fff !important; font-size: clamp(3rem,10vw,8rem) !important; font-weight: 900 !important; line-height: .95 !important; letter-spacing: -.04em !important; text-shadow: 0 0 50px rgba(183,75,209,.25) !important; }
-#wrappedPreviewOverlay .wrapped-story-subtitle { max-width: 700px !important; margin: 1.3rem auto 0 !important; color: rgba(255,255,255,.72) !important; font-size: clamp(1rem,2vw,1.4rem) !important; line-height: 1.5 !important; }
-#wrappedPreviewOverlay .wrapped-story-details { margin-top: 1rem !important; color: #b74bd1 !important; font-size: .9rem !important; font-weight: 600 !important; }
-#wrappedPreviewOverlay .wrapped-story-artwork { width: 150px !important; height: 210px !important; display: grid !important; place-items: center !important; margin: 2rem auto 0 !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 14px !important; background: linear-gradient(145deg,rgba(133,36,153,.4),rgba(255,255,255,.05)) !important; box-shadow: 0 20px 60px rgba(0,0,0,.35) !important; color: rgba(255,255,255,.55) !important; }
-#wrappedPreviewOverlay .wrapped-story-artwork img { width: 100% !important; height: 100% !important; object-fit: cover !important; border-radius: inherit !important; display: block !important; }
-#wrappedPreviewOverlay .wrapped-story-collage { display: flex !important; justify-content: center !important; align-items: center !important; gap: .8rem !important; margin: 2rem auto 0 !important; max-width: min(760px,90vw) !important; }
-#wrappedPreviewOverlay .wrapped-story-collage img { width: clamp(90px,12vw,145px) !important; aspect-ratio: 2/3 !important; object-fit: cover !important; border-radius: 12px !important; border: 1px solid rgba(255,255,255,.12) !important; box-shadow: 0 18px 45px rgba(0,0,0,.42) !important; }
-#wrappedPreviewOverlay .wrapped-preview-close { position: absolute !important; z-index: 10 !important; right: 2rem !important; top: 1.5rem !important; width: 44px !important; height: 44px !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 50% !important; background: rgba(0,0,0,.35) !important; color: #fff !important; font-size: 1.5rem !important; cursor: pointer !important; }
-#wrappedPreviewOverlay .wrapped-preview-navigation { position: absolute !important; z-index: 10 !important; left: 50% !important; bottom: 2rem !important; display: flex !important; align-items: center !important; gap: 1rem !important; width: min(700px,calc(100% - 3rem)) !important; transform: translateX(-50%) !important; }
-#wrappedPreviewOverlay .wrapped-preview-navigation button { width: 42px !important; height: 42px !important; flex-shrink: 0 !important; border: 1px solid rgba(255,255,255,.12) !important; border-radius: 50% !important; background: rgba(255,255,255,.06) !important; color: #fff !important; font-size: 1.5rem !important; cursor: pointer !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress { display: flex !important; flex: 1 !important; gap: .3rem !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress span { height: 3px !important; flex: 1 !important; border-radius: 99px !important; background: rgba(255,255,255,.2) !important; }
-#wrappedPreviewOverlay .wrapped-preview-progress span.active { background: #fff !important; }
-#wrappedPreviewOverlay .wrapped-bg-dynamic { background: radial-gradient(circle at 20% 20%,rgba(183,75,209,.35),transparent 35%),radial-gradient(circle at 80% 75%,rgba(85,18,103,.45),transparent 40%),#080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-gradient { background: linear-gradient(135deg,#18081d,#080809 55%,#25082d) !important; }
-#wrappedPreviewOverlay .wrapped-bg-artwork { background: radial-gradient(circle at center,rgba(133,36,153,.35),transparent 50%),#080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-dark { background: #080809 !important; }
-#wrappedPreviewOverlay .wrapped-bg-minimal { background: #111 !important; }
+#wrappedPreviewOverlay .wrapped-preview-stage::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: repeating-linear-gradient(120deg, #ffffff08 0 1px, transparent 1px 32px);
+    mask-image: linear-gradient(135deg, #000, transparent 65%);
+}
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="Intro"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="Outro"] {
+    --story-accent: #ffd3a8;
+    --story-wash: #713642;
+}
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="LibraryTotal"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="WatchTime"],
+#wrappedPreviewOverlay .wrapped-preview-stage[data-story-type="CombinedTotal"] {
+    --story-accent: #a5f6db;
+    --story-wash: #145b58;
+}
+#wrappedPreviewOverlay .wrapped-story-slide {
+    display: grid;
+    align-items: center;
+    gap: clamp(1.5rem, 4vw, 4rem);
+    width: min(100%, 66rem) !important;
+    box-sizing: border-box;
+    color: var(--story-ink) !important;
+    text-align: left !important;
+    font-family: system-ui, sans-serif;
+}
+#wrappedPreviewOverlay .wrapped-story-copy {
+    min-width: 0;
+    padding-inline-start: clamp(1rem, 3vw, 2.75rem);
+    border-inline-start: 2px solid var(--story-accent);
+}
+#wrappedPreviewOverlay .wrapped-story-eyebrow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem 1rem;
+    margin-bottom: clamp(1rem, 3vh, 2rem) !important;
+    color: var(--story-accent) !important;
+    font-size: .75rem !important;
+    font-weight: 750 !important;
+    letter-spacing: .12em !important;
+    text-transform: uppercase;
+}
+#wrappedPreviewOverlay .wrapped-story-brand {
+    max-width: 100%;
+    padding: .35rem .6rem;
+    border: 1px solid currentColor;
+    border-radius: .4rem;
+    overflow-wrap: anywhere;
+}
+#wrappedPreviewOverlay .wrapped-story-slide h1 {
+    max-width: 18ch !important;
+    margin: 0 !important;
+    color: var(--story-ink) !important;
+    font-size: clamp(1.85rem, 5vw, 4.6rem) !important;
+    font-weight: 760 !important;
+    line-height: 1.06 !important;
+    letter-spacing: -.055em;
+    overflow-wrap: anywhere;
+    text-wrap: balance;
+}
+#wrappedPreviewOverlay [data-story-type="Intro"] h1 {
+    font-size: clamp(2.5rem, 8vw, 7.2rem) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-value {
+    margin-top: .65em !important;
+    color: var(--story-accent) !important;
+    font-size: clamp(2rem, 6vw, 5rem) !important;
+    font-weight: 850 !important;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.05 !important;
+    letter-spacing: -.045em !important;
+    overflow-wrap: anywhere;
+    text-shadow: 0 0 35px color-mix(in srgb, var(--story-accent) 24%, transparent) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-value[data-counter]:not([data-counter=""]) {
+    font-size: clamp(2.8rem, 10vw, 8rem) !important;
+}
+#wrappedPreviewOverlay .wrapped-story-subtitle {
+    max-width: 48ch !important;
+    margin: .85rem 0 0 !important;
+    color: #f5edf4dd !important;
+    font-size: clamp(.95rem, 2vw, 1.35rem) !important;
+    line-height: 1.45 !important;
+}
+#wrappedPreviewOverlay .wrapped-story-details {
+    margin-top: .8rem !important;
+    color: var(--story-accent) !important;
+    font-size: .9rem !important;
+}
+#wrappedPreviewOverlay .wrapped-story-artwork {
+    width: min(11rem, 42vw) !important;
+    aspect-ratio: 2 / 3;
+    display: grid !important;
+    place-items: center !important;
+    margin: 0 !important;
+    border: 1px solid #ffffff40 !important;
+    border-radius: .8rem !important;
+    background: var(--story-wash) !important;
+    box-shadow: 0 18px 55px #0008 !important;
+    color: var(--story-ink) !important;
+    overflow: hidden;
+}
+#wrappedPreviewOverlay .wrapped-story-artwork img {
+    width: 100% !important;
+    height: 100% !important;
+    object-fit: cover !important;
+    display: block !important;
+}
+#wrappedPreviewOverlay .wrapped-story-collage {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(2.5rem, 1fr));
+    gap: .4rem !important;
+    width: min(100%, 23rem);
+    margin: 0 !important;
+}
+#wrappedPreviewOverlay .wrapped-story-collage img {
+    width: 100% !important;
+    min-width: 0;
+    aspect-ratio: 2 / 3 !important;
+    object-fit: cover !important;
+    border: 1px solid #ffffff38 !important;
+    border-radius: .45rem !important;
+    box-shadow: 0 10px 20px #0006;
+}
+#wrappedPreviewOverlay .wrapped-preview-close,
+#wrappedPreviewOverlay .wrapped-preview-navigation button {
+    display: grid !important;
+    place-items: center;
+    width: 44px !important;
+    height: 44px !important;
+    flex-shrink: 0;
+    padding: 0 !important;
+    border: 1px solid #ffffff40 !important;
+    border-radius: .6rem !important;
+    background: #151021 !important;
+    color: #fff !important;
+    font: 1.4rem system-ui !important;
+    cursor: pointer;
+}
+#wrappedPreviewOverlay button:focus-visible {
+    outline: 2px solid #a5f6db;
+    outline-offset: 3px;
+}
+#wrappedPreviewOverlay .wrapped-preview-close {
+    position: absolute !important;
+    z-index: 10;
+    right: clamp(.8rem, 4vw, 3rem);
+    top: clamp(.8rem, 3vh, 2rem);
+}
+#wrappedPreviewOverlay .wrapped-preview-navigation {
+    position: absolute !important;
+    z-index: 10;
+    inset: auto 0 0;
+    display: flex !important;
+    align-items: center !important;
+    gap: clamp(.35rem, 2vw, 1rem);
+    width: auto !important;
+    margin: 0 !important;
+    padding: .65rem clamp(.8rem, 7vw, 7rem) max(.65rem, env(safe-area-inset-bottom)) !important;
+    transform: none !important;
+    background: linear-gradient(transparent, #100c18f5 35%);
+}
+#wrappedPreviewOverlay .wrapped-preview-progress {
+    display: flex !important;
+    flex: 1;
+    gap: .2rem;
+}
+#wrappedPreviewOverlay .wrapped-preview-progress span {
+    height: 4px;
+    flex: 1;
+    border-radius: 99px;
+    background: #ffffff33;
+}
+#wrappedPreviewOverlay .wrapped-preview-progress span.active { background: #a5f6db !important; }
+#wrappedPreviewOverlay .wrapped-bg-dynamic {
+    background: radial-gradient(ellipse at 90% 15%, var(--story-wash), transparent 62%), #130e1e !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-gradient {
+    background: linear-gradient(120deg, #140e20 28%, var(--story-wash)) !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-artwork {
+    background-color: #180e23 !important;
+    background-position: center !important;
+    background-size: cover !important;
+}
+#wrappedPreviewOverlay .wrapped-bg-dark { background: #0d0a15 !important; }
+#wrappedPreviewOverlay .wrapped-bg-minimal { background: #201a29 !important; }
+@media (min-width: 760px) {
+    #wrappedPreviewOverlay .wrapped-story-has-artwork {
+        grid-template-columns: minmax(0, 1fr) minmax(11rem, 28%);
+    }
+    #wrappedPreviewOverlay .wrapped-story-artwork { width: 100% !important; }
+}
+@media (max-height: 580px) and (max-width: 759px) {
+    #wrappedPreviewOverlay .wrapped-story-slide { gap: .75rem; }
+    #wrappedPreviewOverlay .wrapped-story-artwork { width: 5.5rem !important; }
+}
 #wrappedPreviewOverlay.wrapped-no-glow .wrapped-story-value { text-shadow: none !important; }
 #wrappedPreviewOverlay .wrapped-animation-fade { animation: wrappedRevealFade 550ms ease-out both; }
 #wrappedPreviewOverlay .wrapped-animation-up { animation: wrappedDrift 650ms ease-out both; }
@@ -1406,6 +1600,14 @@ async function initialize(page) {
         );
     }
 
+    function normalizedSiteName(value) {
+        return String(value ?? "").trim().slice(0, 80) || "Dreamstreaming";
+    }
+
+    function formatSlideCopy(value, siteName) {
+        return String(value ?? "").replace(/\{SiteName\}/gi, () => siteName);
+    }
+
     function renderPreviewSlide(page) {
         stopPreviewTimer();
 
@@ -1430,13 +1632,17 @@ async function initialize(page) {
             preview.backgroundUrl || preview.artworkUrl || ""
         );
 
-        const title =
-            slide.Title ||
-            preview.defaultTitle;
-
-        const subtitle =
-            slide.Subtitle ||
-            preview.subtitle;
+        const siteName = normalizedSiteName(viewerMode ? configuration.SiteName
+            : document.getElementById("SiteName")?.value ?? configuration?.SiteName);
+        const savedTitle = String(slide.Title || "").trim();
+        const titleTemplate = slide.Type === "Intro" &&
+            /^your year on dreamstreaming$/i.test(savedTitle)
+            ? "Your year on {SiteName}"
+            : savedTitle || preview.defaultTitle;
+        const title = formatSlideCopy(titleTemplate, siteName);
+        const subtitle = formatSlideCopy(slide.Subtitle || preview.subtitle, siteName);
+        stage.dataset.storyType = slide.Type;
+        const hasArtwork = slide.ShowArtwork && Boolean(preview.artworkUrl || preview.artworkLabel || preview.artworkUrls?.length);
 
         const animationsEnabled = viewerMode ? configuration.EnableAnimations !== false
             : document.getElementById("EnableAnimations")?.checked !== false;
@@ -1448,56 +1654,52 @@ async function initialize(page) {
                 );
 
         stage.innerHTML = `
-            <div class="wrapped-story-slide ${animationClass}">
+            <div class="wrapped-story-slide ${animationClass}${hasArtwork ? " wrapped-story-has-artwork" : ""}">
+                <div class="wrapped-story-copy">
+                    <div class="wrapped-story-eyebrow">
+                        ${slide.Type === "Intro" ? "" : `<span class="wrapped-story-brand">${escapeHtml(siteName)}</span>`}
+                        <span>${escapeHtml(preview.eyebrow)}</span>
+                    </div>
 
-                <div class="wrapped-story-eyebrow">
-                    ${escapeHtml(
-                        preview.eyebrow
-                    )}
+                    <h1>
+                        ${escapeHtml(title)}
+                    </h1>
+
+                    ${
+                        slide.ShowValue &&
+                        preview.value
+                            ? `
+                                <div class="wrapped-story-value"
+                                     data-counter="${escapeHtml(
+                                         preview.counter || ""
+                                     )}">
+                                    ${escapeHtml(formatSlideCopy(preview.value, siteName))}
+                                </div>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        subtitle
+                            ? `
+                                <p class="wrapped-story-subtitle">
+                                    ${escapeHtml(subtitle)}
+                                </p>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        slide.ShowDetails &&
+                        preview.details
+                            ? `
+                                <div class="wrapped-story-details">
+                                    ${escapeHtml(formatSlideCopy(preview.details, siteName))}
+                                </div>
+                              `
+                            : ""
+                    }
                 </div>
-
-                <h1>
-                    ${escapeHtml(title)}
-                </h1>
-
-                ${
-                    slide.ShowValue &&
-                    preview.value
-                        ? `
-                            <div class="wrapped-story-value"
-                                 data-counter="${escapeHtml(
-                                     preview.counter || ""
-                                 )}">
-                                ${escapeHtml(
-                                    preview.value
-                                )}
-                            </div>
-                          `
-                        : ""
-                }
-
-                ${
-                    subtitle
-                        ? `
-                            <p class="wrapped-story-subtitle">
-                                ${escapeHtml(subtitle)}
-                            </p>
-                          `
-                        : ""
-                }
-
-                ${
-                    slide.ShowDetails &&
-                    preview.details
-                        ? `
-                            <div class="wrapped-story-details">
-                                ${escapeHtml(
-                                    preview.details
-                                )}
-                            </div>
-                          `
-                        : ""
-                }
 
                 ${
                     slide.ShowArtwork && Array.isArray(preview.artworkUrls) && preview.artworkUrls.length
@@ -1745,7 +1947,7 @@ async function initialize(page) {
             Intro: {
                 eyebrow: "YOUR YEAR",
                 defaultTitle:
-                    "Your year with Jelly-Wrapped",
+                    "Your year on {SiteName}",
                 value: "",
                 subtitle:
                     "A whole year of movies, series and questionable sleep schedules.",
@@ -2047,7 +2249,7 @@ async function initialize(page) {
         if (artworkUrl && String(style || "").toLowerCase() === "artwork") {
             const safeUrl = String(artworkUrl).replace(/'/g, "%27");
             stage.style.backgroundImage =
-                "linear-gradient(180deg,rgba(5,5,6,.28),rgba(5,5,6,.88)),url('" + safeUrl + "')";
+                "linear-gradient(110deg,rgba(13,9,22,.98) 12%,rgba(13,9,22,.76) 55%,rgba(13,9,22,.45)),url('" + safeUrl + "')";
             stage.style.backgroundSize = "cover";
             stage.style.backgroundPosition = "center";
         } else {
@@ -2487,7 +2689,7 @@ async function initialize(page) {
 
                 configuration = Object.fromEntries([
                     "AllowReplay", "ReportYear", "EnableAnimations", "EnableGlowEffects",
-                    "AutoAdvance", "SlideDurationSeconds", "CounterDurationMs"
+                    "AutoAdvance", "SlideDurationSeconds", "CounterDurationMs", "SiteName"
                 ].map(name => [name, field(payload, name)]));
 
                 if (configuration.AllowReplay) document.body.append(replay);
