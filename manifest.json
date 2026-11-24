@@ -8,12 +8,12 @@
     "category": "General",
     "versions": [
       {
-        "version": "1.16.0.0",
-        "changelog": "Public rebrand, per-user exclusion controls, episode library-additions counter, busiest uploads month, new branding.",
+        "version": "1.17.1.0",
+        "changelog": "Redesigned fullscreen slideshow and configurable site branding.",
         "targetAbi": "12.4.0.0",
-        "sourceUrl": "https://github.com/certified-dumbass/Jellyfin-Wrapped/releases/download/v1.16.0.0/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip",
-        "checksum": "43ade8267756affa4b45aff2d5f4dc4f",
-        "timestamp": "2026-11-19T11:57:04Z"
+        "sourceUrl": "https://github.com/certified-dumbass/Jellyfin-Wrapped/releases/download/v1.17.1.0/Jelly-Wrapped-1.17.1.0-Jellyfin12.4.zip",
+        "checksum": "cf00940191a89c31aa97860146dea2c3",
+        "timestamp": "2026-11-24T13:09:28Z"
       }
     ]
   }
