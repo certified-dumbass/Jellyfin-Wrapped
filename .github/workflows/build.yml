@@ -34,24 +34,24 @@ jobs:
           cp bin/Release/net10.0/Wrapped.Core.dll release/staging/
           cp meta.json release/staging/
           cd release/staging
-          zip -q -9 ../Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip Wrapped.Core.dll meta.json
-          unzip -l ../Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip
+          zip -q -9 ../Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip Wrapped.Core.dll meta.json
+          unzip -l ../Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip
       - uses: actions/upload-artifact@v4
         with:
-          name: Jelly-Wrapped-1.16.0.0-Jellyfin12.4
-          path: release/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip
+          name: Jelly-Wrapped-1.17.0.0-Jellyfin12.4
+          path: release/Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip
       - name: Publish GitHub release
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          FILE="release/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip"
-          TAG="v1.16.0.0"
+          FILE="release/Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip"
+          TAG="v1.17.0.0"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$FILE" --clobber
           else
-            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" --title "Jelly-Wrapped v1.16.0.0 (Jellyfin 12.4)" --notes "Jelly-Wrapped community plugin: per-user eligibility controls and new episode-added / busiest-month slides. Development release; test on a backed-up Jellyfin server."
+            gh release create "$TAG" "$FILE" --target "$GITHUB_SHA" --title "Jelly-Wrapped v1.17.0.0 (Jellyfin 12.4)" --notes "Jelly-Wrapped community plugin: Playback Reporting statistics, scheduled web presentations, new animations and admin preview. Development release; test on a backed-up Jellyfin server."
           fi
       - name: Write Jellyfin plugin repository manifest
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
@@ -61,7 +61,7 @@ jobs:
           from pathlib import Path
           import hashlib, json
 
-          f=Path('release/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip')
+          f=Path('release/Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip')
           manifest=[{
             'guid':'5f84d6a7-2c91-47b3-a65e-841e9d42f731',
             'name':'Jelly-Wrapped',
@@ -70,10 +70,10 @@ jobs:
             'owner':'Jelly-Wrapped contributors',
             'category':'General',
             'versions':[{
-              'version':'1.16.0.0',
-              'changelog':'Public rebrand, per-user exclusion controls, episode library-additions counter, busiest uploads month, new branding.',
+              'version':'1.17.0.0',
+              'changelog':'Recorded viewing time, film collections, new intros and animations, scheduled delivery, and replay.',
               'targetAbi':'12.4.0.0',
-              'sourceUrl':'https://github.com/certified-dumbass/Jellyfin-Wrapped/releases/download/v1.16.0.0/Jelly-Wrapped-1.16.0.0-Jellyfin12.4.zip',
+              'sourceUrl':'https://github.com/certified-dumbass/Jellyfin-Wrapped/releases/download/v1.17.0.0/Jelly-Wrapped-1.17.0.0-Jellyfin12.4.zip',
               'checksum':hashlib.md5(f.read_bytes()).hexdigest(),
               'timestamp':datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00','Z')
             }]

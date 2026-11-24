@@ -28,6 +28,11 @@ public class PluginConfiguration : BasePluginConfiguration
     /// <summary>Year used for library addition statistics; 0 = current UTC year.</summary>
     public int ReportYear { get; set; } = 0;
 
+    public string PopupStart { get; set; } = "";
+    public string PopupEnd { get; set; } = "";
+    public bool AllowReplay { get; set; } = true;
+    public int CounterDurationMs { get; set; } = 1100;
+
     public bool WrappedEnabled { get; set; }
 
     public bool EnableAnimations { get; set; }
